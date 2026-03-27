@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datafaker"
+version = "0.1.0"
+description = "YAML-driven synthetic tabular data generator with referential integrity"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "Faker>=18.0.0",
+    "PyYAML>=6.0",
+    "pandas>=1.5",
+    "duckdb>=1.0",
+]
+
+[project.scripts]
+datafaker = "datafaker.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["datafaker"]
