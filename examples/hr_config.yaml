@@ -1,0 +1,136 @@
+# HR/People data schema with 5 interconnected tables demonstrating referential integrity
+
+tables:
+  departments:
+    count: 12
+    fields:
+      department_id:
+        sequence:
+          start: 1
+      department_name:
+        faker: random_element
+        choices: ["Engineering", "Sales", "Marketing", "Human Resources", "Finance", "Operations", "Legal", "Product", "Design", "Data Science", "Quality Assurance", "Customer Success"]
+      manager_name:
+        faker: name
+      budget:
+        faker: random_float
+        min: 100000
+        max: 5000000
+      office_location:
+        faker: city
+      created_at:
+        faker: date_time_this_decade
+
+  employees:
+    count: 350
+    fields:
+      employee_id:
+        sequence:
+          start: 1000
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      email:
+        faker: email
+      phone:
+        faker: phone_number
+      date_of_birth:
+        faker: date_of_birth
+      hire_date:
+        faker: date_time_this_decade
+      department_id:
+        fk: departments.department_id
+      address:
+        faker: address
+      city:
+        faker: city
+      country:
+        faker: country
+      emergency_contact:
+        faker: name
+      emergency_phone:
+        faker: phone_number
+
+  job_roles:
+    count: 45
+    fields:
+      role_id:
+        sequence:
+          start: 1
+      employee_id:
+        fk: employees.employee_id
+      department_id:
+        fk: departments.department_id
+      job_title:
+        faker: job
+      employment_type:
+        faker: random_element
+        choices: ["Full-time", "Part-time", "Contract", "Temporary", "Freelance"]
+      level:
+        faker: random_element
+        choices: ["Junior", "Mid", "Senior", "Lead", "Manager", "Senior Manager", "Director", "VP"]
+      start_date:
+        faker: date_time_this_decade
+      end_date:
+        faker: random_element
+        choices: [null, null, null]  # Most employees still in role
+      is_active:
+        faker: pybool
+
+  salaries:
+    count: 350
+    fields:
+      salary_id:
+        sequence:
+          start: 1
+      employee_id:
+        fk: employees.employee_id
+      role_id:
+        fk: job_roles.role_id
+      base_salary:
+        faker: random_float
+        min: 40000
+        max: 300000
+      bonus_percentage:
+        faker: random_float
+        min: 0
+        max: 50
+      stock_options:
+        faker: random_float
+        min: 0
+        max: 100000
+      effective_date:
+        faker: date_time_this_year
+      salary_currency:
+        faker: random_element
+        choices: ["USD", "EUR", "GBP", "CAD", "AUD"]
+      last_review_date:
+        faker: date_time_this_year
+
+  attendance:
+    count: 8750  # ~25 records per employee across the year
+    fields:
+      attendance_id:
+        sequence:
+          start: 1
+      employee_id:
+        fk: employees.employee_id
+      department_id:
+        fk: departments.department_id
+      attendance_date:
+        faker: date_time_this_year
+      check_in_time:
+        faker: time_object
+      check_out_time:
+        faker: time_object
+      hours_worked:
+        faker: random_float
+        min: 0
+        max: 10
+      status:
+        faker: random_element
+        choices: ["present", "absent", "late", "early_leave", "sick", "vacation", "work_from_home"]
+      notes:
+        faker: random_element
+        choices: [null, null, null, "Team meeting", "Client presentation", "Conference", "Training"]

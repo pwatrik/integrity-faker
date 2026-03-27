@@ -1,0 +1,26 @@
+# Example configuration demonstrating referential integrity between tables
+
+tables:
+  patients:
+    count: 100
+    fields:
+      patient_id:
+        sequence:
+          start: 1
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      dob:
+        faker: date_of_birth
+
+  service_encounters:
+    count: 500
+    fields:
+      encounter_id:
+        sequence:
+          start: 1
+      patient_id:
+        fk: patients.patient_id
+      encounter_date:
+        faker: date_time_this_decade

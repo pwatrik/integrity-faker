@@ -1,0 +1,150 @@
+# Sales data schema with 6 interconnected tables demonstrating referential integrity
+
+tables:
+  customers:
+    count: 400
+    fields:
+      customer_id:
+        sequence:
+          start: 1
+      company_name:
+        faker: company
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      email:
+        faker: email
+      phone:
+        faker: phone_number
+      address:
+        faker: address
+      city:
+        faker: city
+      country:
+        faker: country
+      created_at:
+        faker: date_time_this_year
+
+  sales_reps:
+    count: 30
+    fields:
+      rep_id:
+        sequence:
+          start: 1
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      employee_id:
+        sequence:
+          start: 5000
+      email:
+        faker: email
+      phone:
+        faker: phone_number
+      commission_rate:
+        faker: random_element
+        choices: [0.05, 0.07, 0.10, 0.12, 0.15]
+      hire_date:
+        faker: date_time_this_decade
+
+  products:
+    count: 150
+    fields:
+      product_id:
+        sequence:
+          start: 1
+      product_name:
+        faker: word
+      category:
+        faker: random_element
+        choices: ["Electronics", "Software", "Hardware", "Services", "Consulting"]
+      unit_price:
+        faker: random_float
+        min: 10
+        max: 5000
+      stock_quantity:
+        faker: random_int
+        min: 0
+        max: 1000
+      supplier:
+        faker: company
+      created_at:
+        faker: date_time_this_year
+
+  orders:
+    count: 1200
+    fields:
+      order_id:
+        sequence:
+          start: 1
+      customer_id:
+        fk: customers.customer_id
+      sales_rep_id:
+        fk: sales_reps.rep_id
+      order_date:
+        faker: date_time_this_year
+      ship_date:
+        faker: date_time_this_month
+      total_amount:
+        faker: random_float
+        min: 100
+        max: 50000
+      status:
+        faker: random_element
+        choices: ["pending", "shipped", "delivered", "cancelled", "on_hold"]
+      payment_method:
+        faker: random_element
+        choices: ["credit_card", "bank_transfer", "check", "ach"]
+
+  order_items:
+    count: 3600
+    fields:
+      order_item_id:
+        sequence:
+          start: 1
+      order_id:
+        fk: orders.order_id
+      product_id:
+        fk: products.product_id
+      quantity:
+        faker: random_int
+        min: 1
+        max: 100
+      unit_price:
+        faker: random_float
+        min: 10
+        max: 5000
+      discount_percent:
+        faker: random_element
+        choices: [0, 5, 10, 15, 20, 25]
+      line_total:
+        faker: random_float
+        min: 50
+        max: 100000
+
+  transactions:
+    count: 1200
+    fields:
+      transaction_id:
+        sequence:
+          start: 1
+      order_id:
+        fk: orders.order_id
+      customer_id:
+        fk: customers.customer_id
+      sales_rep_id:
+        fk: sales_reps.rep_id
+      transaction_date:
+        faker: date_time_this_year
+      amount:
+        faker: random_float
+        min: 100
+        max: 50000
+      transaction_type:
+        faker: random_element
+        choices: ["sale", "refund", "adjustment"]
+      status:
+        faker: random_element
+        choices: ["completed", "pending", "failed", "reversed"]

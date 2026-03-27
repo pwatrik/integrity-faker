@@ -1,0 +1,140 @@
+# Medical data schema with 6 interconnected tables demonstrating referential integrity
+
+tables:
+  patients:
+    count: 500
+    fields:
+      patient_id:
+        sequence:
+          start: 1
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      date_of_birth:
+        faker: date_of_birth
+      email:
+        faker: email
+      phone:
+        faker: phone_number
+      address:
+        faker: address
+      created_at:
+        faker: date_time_this_year
+
+  doctors:
+    count: 50
+    fields:
+      doctor_id:
+        sequence:
+          start: 1
+      first_name:
+        faker: first_name
+      last_name:
+        faker: last_name
+      specialty:
+        faker: format_string
+        format: "{job}"
+      license_number:
+        sequence:
+          start: 100000
+      phone:
+        faker: phone_number
+      email:
+        faker: email
+
+  appointments:
+    count: 2000
+    fields:
+      appointment_id:
+        sequence:
+          start: 1
+      patient_id:
+        fk: patients.patient_id
+      doctor_id:
+        fk: doctors.doctor_id
+      appointment_date:
+        faker: date_time_this_year
+      reason:
+        faker: sentence
+      status:
+        faker: random_element
+        choices: ["scheduled", "completed", "cancelled", "no-show"]
+
+  diagnoses:
+    count: 1500
+    fields:
+      diagnosis_id:
+        sequence:
+          start: 1
+      appointment_id:
+        fk: appointments.appointment_id
+      patient_id:
+        fk: patients.patient_id
+      icd_code:
+        faker: lexify
+        pattern: "?##.##"
+      description:
+        faker: sentence
+      severity:
+        faker: random_element
+        choices: ["mild", "moderate", "severe"]
+      diagnosis_date:
+        faker: date_time_this_year
+
+  prescriptions:
+    count: 2500
+    fields:
+      prescription_id:
+        sequence:
+          start: 1
+      diagnosis_id:
+        fk: diagnoses.diagnosis_id
+      patient_id:
+        fk: patients.patient_id
+      doctor_id:
+        fk: doctors.doctor_id
+      medication_name:
+        faker: word
+      dosage:
+        faker: random_element
+        choices: ["5mg", "10mg", "25mg", "50mg", "100mg", "250mg", "500mg"]
+      frequency:
+        faker: random_element
+        choices: ["once daily", "twice daily", "three times daily", "every 4 hours", "every 6 hours", "every 8 hours"]
+      quantity:
+        faker: random_int
+        min: 10
+        max: 100
+      prescribed_date:
+        faker: date_time_this_year
+      expiry_date:
+        faker: date_time_this_month
+
+  lab_results:
+    count: 3000
+    fields:
+      result_id:
+        sequence:
+          start: 1
+      patient_id:
+        fk: patients.patient_id
+      doctor_id:
+        fk: doctors.doctor_id
+      test_name:
+        faker: random_element
+        choices: ["Complete Blood Count", "Metabolic Panel", "Liver Function", "Kidney Function", "Thyroid Panel", "Lipid Panel", "Glucose Test"]
+      result_value:
+        faker: random_float
+        min: 0
+        max: 300
+      unit:
+        faker: random_element
+        choices: ["mg/dL", "mmol/L", "IU/L", "g/dL", "cells/uL"]
+      reference_range:
+        faker: word
+      test_date:
+        faker: date_time_this_year
+      status:
+        faker: random_element
+        choices: ["normal", "abnormal", "critical"]
