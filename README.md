@@ -32,6 +32,30 @@ CLI examples
 .venv\Scripts\python.exe -m datafaker -c examples\config.yaml -f csv -o out --seed 42
 ```
 
+Scenario generator examples
+
+`scenariofaker` extends basic fake data generation with configurable scenario behavior:
+
+- null bursts (contiguous runs of nulls)
+- duplicate-key bursts (contiguous runs of repeated IDs/keys)
+- outlier weighting for numeric values
+- incompleteness (missing values and placeholder IDs)
+- time-of-day/day-of-week/seasonal weighted traffic patterns
+- late-arrival timestamp simulation (event time vs ingest time)
+
+Use the included scenario config at `examples/scenario_config.yaml`.
+
+Additional domain presets:
+
+- `examples/scenario_sales.yaml`
+- `examples/scenario_support.yaml`
+- `examples/scenario_healthcare.yaml`
+
+```cmd
+.venv\Scripts\python.exe -m scenariofaker -c examples\scenario_config.yaml --dry-run
+.venv\Scripts\python.exe -m scenariofaker -c examples\scenario_config.yaml -f csv -o out\scenario --seed 42
+```
+
 Field configuration tips
 
 - Faker providers can accept arguments directly from YAML:
