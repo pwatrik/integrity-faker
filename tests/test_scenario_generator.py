@@ -206,6 +206,43 @@ class TestScenarioDataGenerator(unittest.TestCase):
         delayed_count = (ingest_ts > event_ts).sum()
         self.assertGreater(delayed_count, 0)
 
+    def test_late_arrivals_defaults_arrival_column_to_ingest_ts(self):
+        config = {
+            "tables": {
+                "events": {
+                    "count": 400,
+                    "time_profile": {
+                        "column": "event_ts",
+                        "start": "2026-01-01T00:00:00",
+                        "end": "2026-01-15T23:59:59",
+                    },
+                    "fields": {
+                        "event_id": {"sequence": {"start": 1}},
+                    },
+                    "scenarios": {
+                        "late_arrivals": [
+                            {
+                                "event_time_column": "event_ts",
+                                "probability": 0.30,
+                                "min_delay_minutes": 120,
+                                "max_delay_minutes": 1440,
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+
+        gen = ScenarioDataGenerator(config, seed=13)
+        df = gen.generate()["events"]
+        self.assertIn("ingest_ts", df.columns)
+        event_ts = pd.to_datetime(df["event_ts"])
+        ingest_ts = pd.to_datetime(df["ingest_ts"])
+        # event timestamps must never be mutated; arrival must be >= event
+        self.assertTrue((ingest_ts >= event_ts).all())
+        delayed_count = (ingest_ts > event_ts).sum()
+        self.assertGreater(delayed_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

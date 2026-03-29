@@ -503,7 +503,7 @@ class ScenarioDataGenerator:
                 )
                 continue
 
-            arrival_col = rule.get("arrival_time_column")
+            arrival_col = rule.get("arrival_time_column") or "ingest_ts"
             probability = float(rule.get("probability", 0.05))
             min_delay_minutes = int(rule.get("min_delay_minutes", 60))
             max_delay_minutes = int(rule.get("max_delay_minutes", 24 * 60))
@@ -511,8 +511,7 @@ class ScenarioDataGenerator:
                 max_delay_minutes = min_delay_minutes
 
             event_series = pd.to_datetime(df[event_col], errors="coerce")
-            if arrival_col:
-                df[arrival_col] = event_series
+            df[arrival_col] = event_series
 
             for idx in range(len(df)):
                 event_time = event_series.iloc[idx]
@@ -521,11 +520,7 @@ class ScenarioDataGenerator:
                 if random.random() >= probability:
                     continue
                 delay = random.randint(min_delay_minutes, max_delay_minutes)
-                delayed_arrival = event_time + timedelta(minutes=delay)
-                if arrival_col:
-                    df.at[idx, arrival_col] = delayed_arrival
-                else:
-                    df.at[idx, event_col] = event_time - timedelta(minutes=delay)
+                df.at[idx, arrival_col] = event_time + timedelta(minutes=delay)
 
         return df
 
