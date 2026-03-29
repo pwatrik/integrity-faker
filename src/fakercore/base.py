@@ -285,7 +285,14 @@ class BaseDataGenerator:
             # Single file per table
             for tname, df in self.tables.items():
                 path = os.path.join(out_dir, f"{tname}.parquet")
-                df.to_parquet(path, compression=compression, index=False)
+                try:
+                    df.to_parquet(path, compression=compression, index=False)
+                except ImportError as exc:
+                    raise ImportError(
+                        "PyArrow (or another pandas-compatible Parquet engine) is required "
+                        "for Parquet output. Install it with: pip install pyarrow\n"
+                        "Or: pip install datafaker[parquet]"
+                    ) from exc
                 logger.info("Wrote %s rows to %s", len(df), path)
 
 
