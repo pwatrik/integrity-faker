@@ -91,9 +91,12 @@ class ScenarioDataGenerator:
             if time_profile is not None:
                 self._validate_time_profile(tname, time_profile)
 
-            table_scenarios = tconf.get("scenarios", {})
-            if table_scenarios:
-                self._validate_table_scenarios(tname, table_scenarios)
+            table_scenarios = tconf.get("scenarios")
+            if table_scenarios is not None:
+                if not isinstance(table_scenarios, dict):
+                    raise ValueError(f"Table '{tname}' scenarios must be an object")
+                if table_scenarios:
+                    self._validate_table_scenarios(tname, table_scenarios)
 
     def _validate_probability(self, value: float, label: str) -> None:
         if value < 0 or value > 1:
