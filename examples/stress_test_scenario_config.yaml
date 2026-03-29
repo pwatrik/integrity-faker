@@ -1,0 +1,125 @@
+# Stress test configuration for scenariofaker: generates 300k+ rows with data quality scenarios
+# Demonstrates performance under load with various data quality issues
+#
+# Usage:
+#   scenariofaker examples/stress_test_scenario_config.yaml -f parquet -o out/stress_scenario --chunk-size 100000
+
+tables:
+  transactions:
+    count: 250000
+    fields:
+      transaction_id:
+        sequence:
+          start: 1
+      account_id:
+        faker: random_int
+        min: 1000000
+        max: 1100000
+      amount:
+        faker: pyfloat
+        left_digits: 5
+        right_digits: 2
+        positive: true
+        min_value: 0.01
+        max_value: 100000
+        scenarios:
+          outlier:
+            probability: 0.02
+            multiplier_min: 5
+            multiplier_max: 50
+            round: 2
+      currency:
+        weighted_choice:
+          values: [USD, EUR, GBP, JPY, CAD]
+          weights: [0.50, 0.20, 0.15, 0.10, 0.05]
+        scenarios:
+          missing_probability: 0.01
+      status:
+        weighted_choice:
+          values: [completed, pending, failed, cancelled]
+          weights: [0.85, 0.10, 0.03, 0.02]
+        scenarios:
+          placeholder_values:
+            values: [UNKNOWN, PROCESSING]
+            probability: 0.02
+      description:
+        faker: sentence
+        nb_words: 8
+        scenarios:
+          missing_probability: 0.05
+      merchant_id:
+        faker: random_int
+        min: 5000
+        max: 6000
+      merchant_name:
+        faker: company
+    time_profile:
+      column: created_at
+      start: "2025-01-01T00:00:00"
+      end: "2025-12-31T23:59:59"
+      day_of_week_weights:
+        monday: 1.2
+        tuesday: 1.1
+        wednesday: 1.0
+        thursday: 1.0
+        friday: 1.3
+        saturday: 0.8
+        sunday: 0.6
+      hour_weights:
+        "0": 0.3
+        "6": 0.5
+        "9": 1.5
+        "12": 1.3
+        "15": 1.4
+        "18": 1.2
+        "21": 0.8
+        "23": 0.4
+      seasonal_bursts:
+        - start: "2025-11-01T00:00:00"
+          end: "2025-12-25T23:59:59"
+          multiplier: 3.0
+    scenarios:
+      null_bursts:
+        - columns: [description]
+          burst_count: 3
+          burst_length_min: 500
+          burst_length_max: 1500
+      late_arrivals:
+        - event_time_column: created_at
+          arrival_time_column: processed_at
+          probability: 0.05
+          min_delay_minutes: 30
+          max_delay_minutes: 1440
+
+  disputes:
+    count: 50000
+    fields:
+      dispute_id:
+        sequence:
+          start: 1
+      transaction_id:
+        faker: random_int
+        min: 1
+        max: 250000
+      reason:
+        weighted_choice:
+          values:
+            - Unauthorized
+            - Duplicate Charge
+            - Billing Error
+            - Not Received
+            - Item Defective
+          weights: [0.25, 0.20, 0.20, 0.20, 0.15]
+      status:
+        weighted_choice:
+          values: [open, investigating, resolved, chargeback]
+          weights: [0.30, 0.40, 0.25, 0.05]
+      resolution:
+        faker: sentence
+        nb_words: 10
+        scenarios:
+          missing_probability: 0.15
+    time_profile:
+      column: filed_at
+      start: "2025-06-01T00:00:00"
+      end: "2025-12-31T23:59:59"

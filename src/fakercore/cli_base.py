@@ -7,16 +7,22 @@ from .base import load_config
 
 def build_args(description: str) -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=description)
-    p.add_argument("-c", "--config", required=True, help="YAML configuration file")
-    p.add_argument("-o", "--out", default="out", help="Output directory or duckdb file path")
+    p.add_argument("config", help="YAML configuration file")
+    p.add_argument("-o", "--out", default=".", help="Output directory or duckdb file path")
     p.add_argument(
         "-f",
         "--format",
-        choices=["csv", "json", "duckdb"],
+        choices=["csv", "json", "duckdb", "parquet"],
         default="csv",
         help="Output format",
     )
     p.add_argument("--seed", type=int, default=None, help="Random seed for reproducible data")
+    p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=0,
+        help="Chunk size for parquet multi-file output in rows (0 = single file per table, default)",
+    )
     p.add_argument(
         "--dry-run",
         action="store_true",
@@ -46,6 +52,12 @@ def run_cli(generator_class, description: str, argv=None) -> None:
     elif args.format == "json":
         gen.to_json(args.out)
         print(f"Wrote JSON files to {args.out}")
+    elif args.format == "parquet":
+        gen.to_parquet(args.out, chunk_size=args.chunk_size)
+        if args.chunk_size > 0:
+            print(f"Wrote chunked Parquet files (chunk_size={args.chunk_size}) to {args.out}")
+        else:
+            print(f"Wrote Parquet files to {args.out}")
     elif args.format == "duckdb":
         db_path = args.out
         if os.path.isdir(db_path):

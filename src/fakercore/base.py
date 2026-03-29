@@ -1,12 +1,14 @@
 import os
 import random
 import logging
+import time
 from typing import Any, ClassVar, Dict, List
 
 import duckdb
 import pandas as pd
 import yaml
 from faker import Faker
+from tqdm import tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -170,27 +172,42 @@ class BaseDataGenerator:
 
     def generate(self) -> Dict[str, pd.DataFrame]:
         """Generate all configured tables in FK-safe order and return them."""
+        generation_start = time.perf_counter()
         tables_conf = self.config.get("tables", {})
         deps = self._extract_refs()
         order = self._topo_sort(deps)
         for tname in order:
+            table_start = time.perf_counter()
             tconf = tables_conf[tname]
             count = int(tconf.get("count", 0))
             fields = tconf.get("fields", {})
             logger.info("Generating table '%s' (%s rows)", tname, count)
             self._pre_generate_table(tname, tconf, count)
             rows: List[Dict[str, Any]] = []
-            for i in range(count):
+            progress_iter = tqdm(
+                range(count),
+                desc=f"{tname}",
+                unit="row",
+                leave=False,
+                dynamic_ncols=True,
+            )
+            for i in progress_iter:
                 row: Dict[str, Any] = {}
                 for fname, fconf in fields.items():
                     row[fname] = self._generate_field(fconf, i, row)
                 row.update(self._generate_row_extras(i, tconf))
                 rows.append(row)
+            progress_iter.close()
             df = pd.DataFrame(rows)
             df = self._post_generate_table(tname, tconf, df)
             self.tables[tname] = df
             self._fk_cache.clear()
-            logger.info("Finished table '%s' with %s rows", tname, len(df))
+            table_elapsed = time.perf_counter() - table_start
+            logger.info(
+                "Finished table '%s' with %s rows in %.2fs", tname, len(df), table_elapsed
+            )
+        total_elapsed = time.perf_counter() - generation_start
+        logger.info("Generation complete: %s table(s) in %.2fs", len(order), total_elapsed)
         return self.tables
 
     # ------------------------------------------------------------------
@@ -223,6 +240,60 @@ class BaseDataGenerator:
             con.execute(f"CREATE TABLE {tname} AS SELECT * FROM {temp}")
             con.unregister(temp)
         con.close()
+
+    def to_parquet(
+        self, out_dir: str, chunk_size: int = 0, compression: str = "snappy"
+    ) -> None:
+        """Write tables to Parquet format.
+
+        Args:
+            out_dir: Output directory
+            chunk_size: If >0, splits each table into chunks of this size into separate files
+                       (e.g., table_name/chunk_00000.parquet, chunk_00001.parquet, ...).
+                       Requires PyArrow. If 0, writes a single file per table.
+            compression: Compression codec: 'snappy' (default), 'gzip', 'brotli', 'lz4', 'zstd', or None.
+        """
+        os.makedirs(out_dir, exist_ok=True)
+
+        if chunk_size > 0:
+            try:
+                import pyarrow.parquet as pq
+            except ImportError as exc:
+                raise ImportError(
+                    "PyArrow is required for chunked Parquet output. "
+                    "Install it with: pip install pyarrow\n"
+                    "Or: pip install datafaker[parquet]"
+                ) from exc
+
+            for tname, df in self.tables.items():
+                table_dir = os.path.join(out_dir, tname)
+                os.makedirs(table_dir, exist_ok=True)
+
+                # Split DataFrame into chunks
+                num_chunks = (len(df) + chunk_size - 1) // chunk_size
+                for chunk_idx in range(num_chunks):
+                    start_row = chunk_idx * chunk_size
+                    end_row = min((chunk_idx + 1) * chunk_size, len(df))
+                    chunk_df = df.iloc[start_row:end_row]
+
+                    chunk_filename = os.path.join(table_dir, f"chunk_{chunk_idx:05d}.parquet")
+                    chunk_df.to_parquet(chunk_filename, compression=compression, index=False)
+                    logger.info(
+                        "Wrote %s rows to %s", len(chunk_df), chunk_filename
+                    )
+        else:
+            # Single file per table
+            for tname, df in self.tables.items():
+                path = os.path.join(out_dir, f"{tname}.parquet")
+                try:
+                    df.to_parquet(path, compression=compression, index=False)
+                except ImportError as exc:
+                    raise ImportError(
+                        "PyArrow (or another pandas-compatible Parquet engine) is required "
+                        "for Parquet output. Install it with: pip install pyarrow\n"
+                        "Or: pip install datafaker[parquet]"
+                    ) from exc
+                logger.info("Wrote %s rows to %s", len(df), path)
 
 
 def load_config(path: str) -> Dict[str, Any]:
