@@ -80,6 +80,11 @@ class ScenarioDataGenerator:
 
                     scenarios = fconf.get("scenarios", {})
                     if scenarios:
+                        if not isinstance(scenarios, dict):
+                            raise ValueError(
+                                f"Field 'scenarios' for {tname}.{fname} must be a mapping, "
+                                f"got {type(scenarios).__name__}"
+                            )
                         self._validate_field_scenarios(tname, fname, scenarios)
 
             time_profile = tconf.get("time_profile")
