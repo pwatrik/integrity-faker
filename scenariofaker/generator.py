@@ -257,6 +257,11 @@ class ScenarioDataGenerator:
             raise ValueError("weighted choice requires equal-length 'values' and 'weights'")
         if not values:
             raise ValueError("weighted choice requires non-empty 'values'")
+        if any(w < 0 for w in weights):
+            raise ValueError("weighted choice requires non-negative 'weights'")
+        total_weight = sum(weights)
+        if total_weight <= 0:
+            raise ValueError("weighted choice requires total weight > 0")
         return random.choices(values, weights=weights, k=1)[0]
 
     def _apply_field_scenarios(self, value: Any, fconf: Dict[str, Any]) -> Any:
