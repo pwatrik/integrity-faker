@@ -15,6 +15,9 @@ dependencies = [
     "duckdb>=1.0",
 ]
 
+[project.optional-dependencies]
+parquet = ["pyarrow>=10.0"]
+
 [project.scripts]
 datafaker = "datafaker.cli:main"
 scenariofaker = "scenariofaker.cli:main"

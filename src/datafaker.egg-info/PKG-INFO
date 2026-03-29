@@ -8,6 +8,8 @@ Requires-Dist: Faker>=18.0.0
 Requires-Dist: PyYAML>=6.0
 Requires-Dist: pandas>=1.5
 Requires-Dist: duckdb>=1.0
+Provides-Extra: parquet
+Requires-Dist: pyarrow>=10.0; extra == "parquet"
 
 # YAML-driven Synthetic Data Generator
 

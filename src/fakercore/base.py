@@ -224,6 +224,53 @@ class BaseDataGenerator:
             con.unregister(temp)
         con.close()
 
+    def to_parquet(
+        self, out_dir: str, chunk_size: int = 0, compression: str = "snappy"
+    ) -> None:
+        """Write tables to Parquet format.
+
+        Args:
+            out_dir: Output directory
+            chunk_size: If >0, splits each table into chunks of this size into separate files
+                       (e.g., table_name/chunk_00000.parquet, chunk_00001.parquet, ...).
+                       Requires PyArrow. If 0, writes a single file per table.
+            compression: Compression codec: 'snappy' (default), 'gzip', 'brotli', 'lz4', 'zstd', or None.
+        """
+        os.makedirs(out_dir, exist_ok=True)
+
+        if chunk_size > 0:
+            try:
+                import pyarrow.parquet as pq
+            except ImportError as exc:
+                raise ImportError(
+                    "PyArrow is required for chunked Parquet output. "
+                    "Install it with: pip install pyarrow\n"
+                    "Or: pip install datafaker[parquet]"
+                ) from exc
+
+            for tname, df in self.tables.items():
+                table_dir = os.path.join(out_dir, tname)
+                os.makedirs(table_dir, exist_ok=True)
+
+                # Split DataFrame into chunks
+                num_chunks = (len(df) + chunk_size - 1) // chunk_size
+                for chunk_idx in range(num_chunks):
+                    start_row = chunk_idx * chunk_size
+                    end_row = min((chunk_idx + 1) * chunk_size, len(df))
+                    chunk_df = df.iloc[start_row:end_row]
+
+                    chunk_filename = os.path.join(table_dir, f"chunk_{chunk_idx:05d}.parquet")
+                    chunk_df.to_parquet(chunk_filename, compression=compression, index=False)
+                    logger.info(
+                        "Wrote %s rows to %s", len(chunk_df), chunk_filename
+                    )
+        else:
+            # Single file per table
+            for tname, df in self.tables.items():
+                path = os.path.join(out_dir, f"{tname}.parquet")
+                df.to_parquet(path, compression=compression, index=False)
+                logger.info("Wrote %s rows to %s", len(df), path)
+
 
 def load_config(path: str) -> Dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:

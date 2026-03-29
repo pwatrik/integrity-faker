@@ -2,3 +2,6 @@ Faker>=18.0.0
 PyYAML>=6.0
 pandas>=1.5
 duckdb>=1.0
+
+[parquet]
+pyarrow>=10.0
