@@ -1,20 +1,27 @@
-import random
 import os
-import json
+import random
 import logging
-from typing import Dict, Any, List
+from typing import Any, ClassVar, Dict, List
 
-import yaml
-import pandas as pd
-from faker import Faker
 import duckdb
+import pandas as pd
+import yaml
+from faker import Faker
 
 
 logger = logging.getLogger(__name__)
 
 
-class DataGenerator:
-    """Generate synthetic tabular data from YAML config with FK integrity."""
+class BaseDataGenerator:
+    """Base class for synthetic tabular data generation from YAML config.
+
+    Subclasses extend this via three template hooks:
+      _pre_generate_table(tname, tconf, count)  — called once before the row loop
+      _generate_row_extras(row_idx, tconf)       — called per row; merge returned dict into row
+      _post_generate_table(tname, tconf, df)     — called after row loop; transform/return df
+    """
+
+    _FAKER_SKIP_KEYS: ClassVar[frozenset] = frozenset({"faker", "fk", "sequence", "static"})
 
     def __init__(self, config: Dict[str, Any], seed: int | None = None):
         self.config = config
@@ -59,28 +66,26 @@ class DataGenerator:
                         )
 
     def _extract_refs(self) -> Dict[str, List[str]]:
-        # build dependency graph: table -> list of tables it depends on
+        """Build dependency graph: table -> list of tables it depends on via FK."""
         tables = self.config.get("tables", {})
         deps: Dict[str, List[str]] = {t: [] for t in tables}
         for tname, tconf in tables.items():
             fields = tconf.get("fields", {})
             for _fname, fconf in fields.items():
                 if isinstance(fconf, dict) and "fk" in fconf:
-                    ref = fconf["fk"]  # expected format: other_table.other_field
-                    ref_table = ref.split(".")[0]
+                    ref_table = fconf["fk"].split(".", 1)[0]
                     if ref_table not in deps[tname]:
                         deps[tname].append(ref_table)
         return deps
 
     def _topo_sort(self, deps: Dict[str, List[str]]) -> List[str]:
-        # Kahn's algorithm
+        """Kahn's algorithm topological sort."""
         incoming = {t: 0 for t in deps}
         for _t, ds in deps.items():
             for d in ds:
                 if d not in incoming:
                     raise ValueError(f"Unknown dependency table referenced: {d}")
                 incoming[_t] += 1
-        # nodes with zero incoming
         zero = [t for t, cnt in incoming.items() if cnt == 0]
         order: List[str] = []
         while zero:
@@ -92,22 +97,18 @@ class DataGenerator:
                     if incoming[m] == 0:
                         zero.append(m)
         if len(order) != len(deps):
-            raise ValueError("Cycle detected in table foreign-key dependencies; please break cycles or pre-generate keys.")
+            raise ValueError(
+                "Cycle detected in table foreign-key dependencies; "
+                "please break cycles or pre-generate keys."
+            )
         return order
 
     def _run_faker_provider(self, provider: str, fconf: Dict[str, Any]) -> Any:
-        """Invoke faker provider with optional keyword args from config.
-
-        Example:
-          faker: random_int
-          min: 1
-          max: 10
-        """
+        """Invoke a Faker provider with optional keyword args; skip keys in _FAKER_SKIP_KEYS."""
         if not hasattr(self.faker, provider):
             raise ValueError(f"Unknown faker provider: {provider}")
-
         func = getattr(self.faker, provider)
-        kwargs = {k: v for k, v in fconf.items() if k not in {"faker", "fk", "sequence", "static"}}
+        kwargs = {k: v for k, v in fconf.items() if k not in self._FAKER_SKIP_KEYS}
         try:
             return func(**kwargs)
         except TypeError as exc:
@@ -120,7 +121,7 @@ class DataGenerator:
             ) from exc
 
     def _generate_field(self, fconf: Any, row_idx: int, current_row: Dict[str, Any]) -> Any:
-        # fconf can be: dict with keys 'faker', 'sequence', 'static', 'fk'
+        """Generate a single field value. Subclasses may extend for additional field types."""
         if isinstance(fconf, dict):
             if "static" in fconf:
                 return fconf["static"]
@@ -129,11 +130,9 @@ class DataGenerator:
                 step = int(fconf["sequence"].get("step", 1))
                 return start + row_idx * step
             if "faker" in fconf:
-                provider = fconf["faker"]
-                return self._run_faker_provider(provider, fconf)
+                return self._run_faker_provider(fconf["faker"], fconf)
             if "fk" in fconf:
-                ref = fconf["fk"]
-                ref_table, ref_field = ref.split(".")
+                ref_table, ref_field = fconf["fk"].split(".", 1)
                 if ref_table not in self.tables:
                     raise ValueError(f"Referenced table {ref_table} not generated yet")
                 cache_key = f"{ref_table}.{ref_field}"
@@ -142,10 +141,32 @@ class DataGenerator:
                     choices = self.tables[ref_table][ref_field].tolist()
                     self._fk_cache[cache_key] = choices
                 if not choices:
-                    raise ValueError(f"Referenced table {ref_table}.{ref_field} has no rows to choose from")
+                    raise ValueError(
+                        f"Referenced table {ref_table}.{ref_field} has no rows to choose from"
+                    )
                 return random.choice(choices)
-        # fallback: literal
         return fconf
+
+    # ------------------------------------------------------------------
+    # Template hooks — override in subclasses; all are no-ops by default
+    # ------------------------------------------------------------------
+
+    def _pre_generate_table(self, tname: str, tconf: Dict[str, Any], count: int) -> None:
+        """Called once before the row loop for each table. Use to precompute per-table state."""
+
+    def _generate_row_extras(self, row_idx: int, tconf: Dict[str, Any]) -> Dict[str, Any]:
+        """Called per row; returned dict is merged into the row. Returns {} by default."""
+        return {}
+
+    def _post_generate_table(
+        self, tname: str, tconf: Dict[str, Any], df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Called after the row loop. May transform and return the DataFrame. No-op by default."""
+        return df
+
+    # ------------------------------------------------------------------
+    # Main generation loop
+    # ------------------------------------------------------------------
 
     def generate(self) -> Dict[str, pd.DataFrame]:
         """Generate all configured tables in FK-safe order and return them."""
@@ -157,27 +178,32 @@ class DataGenerator:
             count = int(tconf.get("count", 0))
             fields = tconf.get("fields", {})
             logger.info("Generating table '%s' (%s rows)", tname, count)
+            self._pre_generate_table(tname, tconf, count)
             rows: List[Dict[str, Any]] = []
             for i in range(count):
                 row: Dict[str, Any] = {}
                 for fname, fconf in fields.items():
-                    value = self._generate_field(fconf, i, row)
-                    row[fname] = value
+                    row[fname] = self._generate_field(fconf, i, row)
+                row.update(self._generate_row_extras(i, tconf))
                 rows.append(row)
             df = pd.DataFrame(rows)
+            df = self._post_generate_table(tname, tconf, df)
             self.tables[tname] = df
-            logger.info("Finished table '%s' with %s rows", tname, len(df))
-            # Reference tables are immutable after creation; clear to bound cache size.
             self._fk_cache.clear()
+            logger.info("Finished table '%s' with %s rows", tname, len(df))
         return self.tables
 
-    def to_csv(self, out_dir: str):
+    # ------------------------------------------------------------------
+    # Output writers
+    # ------------------------------------------------------------------
+
+    def to_csv(self, out_dir: str) -> None:
         os.makedirs(out_dir, exist_ok=True)
         for tname, df in self.tables.items():
             path = os.path.join(out_dir, f"{tname}.csv")
             df.to_csv(path, index=False)
 
-    def to_json(self, out_dir: str):
+    def to_json(self, out_dir: str) -> None:
         os.makedirs(out_dir, exist_ok=True)
         for tname, df in self.tables.items():
             path = os.path.join(out_dir, f"{tname}.json")
@@ -185,10 +211,11 @@ class DataGenerator:
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(df.to_json(orient="records", indent=2))
             except OSError as exc:
-                raise OSError(f"Failed to write JSON output for table '{tname}' to '{path}'") from exc
+                raise OSError(
+                    f"Failed to write JSON output for table '{tname}' to '{path}'"
+                ) from exc
 
-    def to_duckdb(self, db_path: str):
-        # create duckdb file and write each dataframe as a table
+    def to_duckdb(self, db_path: str) -> None:
         con = duckdb.connect(db_path)
         for tname, df in self.tables.items():
             temp = f"__tmp_{tname}"

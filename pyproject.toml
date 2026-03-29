@@ -20,4 +20,5 @@ datafaker = "datafaker.cli:main"
 scenariofaker = "scenariofaker.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["datafaker", "scenariofaker"]
+where = ["src"]
+include = ["datafaker*", "scenariofaker*", "fakercore*"]
