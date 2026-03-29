@@ -2,7 +2,7 @@
 # Demonstrates performance under load with various data quality issues
 #
 # Usage:
-#   scenariofaker -c examples/stress_test_scenario_config.yaml -f parquet -o out/stress_scenario --chunk-size 100000
+#   scenariofaker examples/stress_test_scenario_config.yaml -f parquet -o out/stress_scenario --chunk-size 100000
 
 tables:
   transactions:
