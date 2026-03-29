@@ -1,0 +1,58 @@
+# Stress test configuration: generates 300k+ rows for performance testing
+# and multi-file chunked parquet output demonstration
+#
+# Usage:
+#   datafaker -c examples/stress_test_config.yaml -f parquet -o out/stress_test --chunk-size 100000
+#   scenariofaker -c examples/stress_test_config.yaml -f parquet -o out/stress_test_scenario --chunk-size 100000
+
+tables:
+  users:
+    count: 5000
+    fields:
+      user_id:
+        sequence:
+          start: 1
+      username:
+        faker: user_name
+      email:
+        faker: email
+      created_at:
+        faker: iso8601
+      is_active:
+        static: true
+
+  api_calls:
+    count: 300000
+    fields:
+      call_id:
+        sequence:
+          start: 1
+      user_id:
+        fk: users.user_id
+      endpoint:
+        weighted_choice:
+          values:
+            - /api/v1/users
+            - /api/v1/products
+            - /api/v1/orders
+            - /api/v1/payments
+            - /api/v1/analytics
+          weights: [0.25, 0.20, 0.30, 0.15, 0.10]
+      method:
+        weighted_choice:
+          values: [GET, POST, PUT, DELETE, PATCH]
+          weights: [0.60, 0.20, 0.10, 0.05, 0.05]
+      status_code:
+        weighted_choice:
+          values: [200, 201, 204, 400, 401, 403, 404, 500, 502, 503]
+          weights: [0.70, 0.05, 0.05, 0.08, 0.03, 0.02, 0.03, 0.02, 0.01, 0.01]
+      response_time_ms:
+        faker: random_int
+        min: 10
+        max: 5000
+      timestamp:
+        faker: iso8601
+      user_agent:
+        faker: user_agent
+      ip_address:
+        faker: ipv4

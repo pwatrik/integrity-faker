@@ -7,8 +7,8 @@ from .base import load_config
 
 def build_args(description: str) -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=description)
-    p.add_argument("-c", "--config", required=True, help="YAML configuration file")
-    p.add_argument("-o", "--out", default="out", help="Output directory or duckdb file path")
+    p.add_argument("config", help="YAML configuration file")
+    p.add_argument("-o", "--out", default=".", help="Output directory or duckdb file path")
     p.add_argument(
         "-f",
         "--format",

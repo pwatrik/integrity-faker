@@ -1,12 +1,14 @@
 import os
 import random
 import logging
+import time
 from typing import Any, ClassVar, Dict, List
 
 import duckdb
 import pandas as pd
 import yaml
 from faker import Faker
+from tqdm import tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -170,27 +172,42 @@ class BaseDataGenerator:
 
     def generate(self) -> Dict[str, pd.DataFrame]:
         """Generate all configured tables in FK-safe order and return them."""
+        generation_start = time.perf_counter()
         tables_conf = self.config.get("tables", {})
         deps = self._extract_refs()
         order = self._topo_sort(deps)
         for tname in order:
+            table_start = time.perf_counter()
             tconf = tables_conf[tname]
             count = int(tconf.get("count", 0))
             fields = tconf.get("fields", {})
             logger.info("Generating table '%s' (%s rows)", tname, count)
             self._pre_generate_table(tname, tconf, count)
             rows: List[Dict[str, Any]] = []
-            for i in range(count):
+            progress_iter = tqdm(
+                range(count),
+                desc=f"{tname}",
+                unit="row",
+                leave=False,
+                dynamic_ncols=True,
+            )
+            for i in progress_iter:
                 row: Dict[str, Any] = {}
                 for fname, fconf in fields.items():
                     row[fname] = self._generate_field(fconf, i, row)
                 row.update(self._generate_row_extras(i, tconf))
                 rows.append(row)
+            progress_iter.close()
             df = pd.DataFrame(rows)
             df = self._post_generate_table(tname, tconf, df)
             self.tables[tname] = df
             self._fk_cache.clear()
-            logger.info("Finished table '%s' with %s rows", tname, len(df))
+            table_elapsed = time.perf_counter() - table_start
+            logger.info(
+                "Finished table '%s' with %s rows in %.2fs", tname, len(df), table_elapsed
+            )
+        total_elapsed = time.perf_counter() - generation_start
+        logger.info("Generation complete: %s table(s) in %.2fs", len(order), total_elapsed)
         return self.tables
 
     # ------------------------------------------------------------------
