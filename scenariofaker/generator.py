@@ -148,6 +148,14 @@ class ScenarioDataGenerator:
         if null_bursts and not isinstance(null_bursts, list):
             raise ValueError(f"{tname}.scenarios.null_bursts must be a list")
 
+        for idx, burst in enumerate(null_bursts):
+            if not isinstance(burst, dict):
+                raise ValueError(f"{tname}.scenarios.null_bursts[{idx}] must be an object")
+            columns = burst.get("columns")
+            if columns is not None and not isinstance(columns, list):
+                raise ValueError(
+                    f"{tname}.scenarios.null_bursts[{idx}].columns must be a list"
+                )
         duplicate_key_bursts = scenarios.get("duplicate_key_bursts", [])
         if duplicate_key_bursts and not isinstance(duplicate_key_bursts, list):
             raise ValueError(f"{tname}.scenarios.duplicate_key_bursts must be a list")
