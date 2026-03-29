@@ -2,8 +2,8 @@
 # and multi-file chunked parquet output demonstration
 #
 # Usage:
-#   datafaker -c examples/stress_test_config.yaml -f parquet -o out/stress_test --chunk-size 100000
-#   scenariofaker -c examples/stress_test_config.yaml -f parquet -o out/stress_test_scenario --chunk-size 100000
+#   datafaker examples/stress_test_config.yaml -f parquet -o out/stress_test --chunk-size 100000
+#   scenariofaker examples/stress_test_config.yaml -f parquet -o out/stress_test_scenario --chunk-size 100000
 
 tables:
   users:
