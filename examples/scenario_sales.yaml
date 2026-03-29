@@ -1,0 +1,115 @@
+tables:
+  customers:
+    count: 500
+    fields:
+      customer_id:
+        sequence:
+          start: 10000
+      segment:
+        weighted_choice:
+          values: ["enterprise", "mid_market", "smb", "consumer"]
+          weights: [0.12, 0.28, 0.30, 0.30]
+      state:
+        faker: state_abbr
+      email:
+        faker: email
+        scenarios:
+          missing_probability: 0.04
+
+  orders:
+    count: 8000
+    time_profile:
+      column: order_ts
+      start: "2026-01-01T00:00:00"
+      end: "2026-03-31T23:59:59"
+      day_of_week_weights:
+        monday: 0.9
+        tuesday: 1.0
+        wednesday: 1.0
+        thursday: 1.1
+        friday: 1.35
+        saturday: 0.7
+        sunday: 0.55
+      hour_weights:
+        "0": 0.15
+        "1": 0.15
+        "2": 0.10
+        "3": 0.10
+        "4": 0.12
+        "5": 0.20
+        "6": 0.35
+        "7": 0.60
+        "8": 1.20
+        "9": 1.80
+        "10": 1.45
+        "11": 1.20
+        "12": 1.30
+        "13": 1.25
+        "14": 1.10
+        "15": 1.05
+        "16": 1.25
+        "17": 1.65
+        "18": 2.10
+        "19": 1.60
+        "20": 1.10
+        "21": 0.75
+        "22": 0.40
+        "23": 0.25
+      seasonal_bursts:
+        - start: "2026-02-13T00:00:00"
+          end: "2026-02-16T23:59:59"
+          multiplier: 3.5
+    fields:
+      order_id:
+        sequence:
+          start: 1
+      customer_id:
+        fk: customers.customer_id
+      sku:
+        weighted_choice:
+          values: ["SKU-A", "SKU-B", "SKU-C", "SKU-D", "SKU-X"]
+          weights: [0.35, 0.28, 0.20, 0.12, 0.05]
+      order_value:
+        faker: pyfloat
+        left_digits: 3
+        right_digits: 2
+        positive: true
+        min_value: 10
+        max_value: 750
+        scenarios:
+          outlier:
+            probability: 0.02
+            multiplier_min: 7
+            multiplier_max: 25
+            round: 2
+      shipping_address:
+        faker: street_address
+        scenarios:
+          missing_probability: 0.06
+      tracking_id:
+        faker: bothify
+        text: "TRK-########"
+        scenarios:
+          placeholder_values:
+            values: ["UNKNOWN", "NA", "PENDING"]
+            probability: 0.03
+    scenarios:
+      null_bursts:
+        - columns: [shipping_address]
+          burst_count: 3
+          burst_length_min: 25
+          burst_length_max: 50
+      duplicate_key_bursts:
+        - column: order_id
+          burst_count: 2
+          burst_length_min: 4
+          burst_length_max: 8
+      late_arrivals:
+        - event_time_column: order_ts
+          arrival_time_column: ingest_ts
+          probability: 0.08
+          min_delay_minutes: 60
+          max_delay_minutes: 2880
+      incompleteness:
+        columns:
+          tracking_id: 0.05

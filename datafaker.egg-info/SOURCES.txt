@@ -10,4 +10,9 @@ datafaker.egg-info/dependency_links.txt
 datafaker.egg-info/entry_points.txt
 datafaker.egg-info/requires.txt
 datafaker.egg-info/top_level.txt
+scenariofaker/__init__.py
+scenariofaker/__main__.py
+scenariofaker/cli.py
+scenariofaker/generator.py
 tests/test_generator.py
+tests/test_scenario_generator.py

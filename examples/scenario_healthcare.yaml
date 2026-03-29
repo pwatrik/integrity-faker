@@ -1,0 +1,118 @@
+tables:
+  providers:
+    count: 180
+    fields:
+      provider_id:
+        sequence:
+          start: 2000
+      specialty:
+        weighted_choice:
+          values: ["family_medicine", "cardiology", "pediatrics", "orthopedics", "neurology"]
+          weights: [0.40, 0.15, 0.20, 0.15, 0.10]
+      facility_state:
+        faker: state_abbr
+
+  encounters:
+    count: 9000
+    time_profile:
+      column: encounter_ts
+      start: "2026-01-01T00:00:00"
+      end: "2026-03-31T23:59:59"
+      day_of_week_weights:
+        monday: 1.15
+        tuesday: 1.20
+        wednesday: 1.20
+        thursday: 1.15
+        friday: 1.10
+        saturday: 0.75
+        sunday: 0.70
+      hour_weights:
+        "0": 0.30
+        "1": 0.28
+        "2": 0.25
+        "3": 0.22
+        "4": 0.22
+        "5": 0.30
+        "6": 0.50
+        "7": 0.85
+        "8": 1.45
+        "9": 1.85
+        "10": 1.70
+        "11": 1.55
+        "12": 1.40
+        "13": 1.35
+        "14": 1.40
+        "15": 1.50
+        "16": 1.60
+        "17": 1.45
+        "18": 1.20
+        "19": 0.95
+        "20": 0.75
+        "21": 0.60
+        "22": 0.45
+        "23": 0.35
+      seasonal_bursts:
+        - start: "2026-01-18T00:00:00"
+          end: "2026-01-24T23:59:59"
+          multiplier: 2.8
+    fields:
+      encounter_id:
+        sequence:
+          start: 300000
+      provider_id:
+        fk: providers.provider_id
+      patient_external_id:
+        faker: bothify
+        text: "PT-#######"
+        scenarios:
+          placeholder_values:
+            values: ["UNKNOWN", "TEST-PATIENT", "TEMP-ID"]
+            probability: 0.04
+      diagnosis_code:
+        weighted_choice:
+          values: ["J10", "I10", "E11", "M54", "R07"]
+          weights: [0.22, 0.26, 0.24, 0.18, 0.10]
+      claim_amount:
+        faker: pyfloat
+        left_digits: 4
+        right_digits: 2
+        positive: true
+        min_value: 50
+        max_value: 3500
+        scenarios:
+          outlier:
+            probability: 0.015
+            multiplier_min: 4
+            multiplier_max: 12
+            round: 2
+      address_line1:
+        faker: street_address
+        scenarios:
+          missing_probability: 0.07
+      insurance_member_id:
+        faker: bothify
+        text: "MBR-########"
+        scenarios:
+          placeholder_values:
+            values: ["UNVERIFIED", "PENDING", "UNKNOWN"]
+            probability: 0.03
+    scenarios:
+      null_bursts:
+        - columns: [address_line1]
+          burst_count: 3
+          burst_length_min: 20
+          burst_length_max: 40
+      duplicate_key_bursts:
+        - column: encounter_id
+          burst_count: 2
+          burst_length_min: 3
+          burst_length_max: 5
+      late_arrivals:
+        - event_time_column: encounter_ts
+          arrival_time_column: ingest_ts
+          probability: 0.10
+          min_delay_minutes: 90
+          max_delay_minutes: 4320
+      incompleteness:
+        columns:
+          insurance_member_id: 0.05

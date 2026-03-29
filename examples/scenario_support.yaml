@@ -1,0 +1,112 @@
+tables:
+  agents:
+    count: 75
+    fields:
+      agent_id:
+        sequence:
+          start: 500
+      team:
+        weighted_choice:
+          values: ["L1", "L2", "Escalation"]
+          weights: [0.62, 0.28, 0.10]
+      region:
+        weighted_choice:
+          values: ["NA", "EMEA", "APAC"]
+          weights: [0.45, 0.30, 0.25]
+
+  tickets:
+    count: 12000
+    time_profile:
+      column: created_ts
+      start: "2026-01-01T00:00:00"
+      end: "2026-03-31T23:59:59"
+      day_of_week_weights:
+        monday: 1.35
+        tuesday: 1.20
+        wednesday: 1.10
+        thursday: 1.05
+        friday: 0.95
+        saturday: 0.70
+        sunday: 0.65
+      hour_weights:
+        "0": 0.50
+        "1": 0.45
+        "2": 0.40
+        "3": 0.35
+        "4": 0.35
+        "5": 0.45
+        "6": 0.70
+        "7": 1.00
+        "8": 1.50
+        "9": 2.30
+        "10": 2.05
+        "11": 1.80
+        "12": 1.60
+        "13": 1.70
+        "14": 1.85
+        "15": 2.10
+        "16": 1.90
+        "17": 1.60
+        "18": 1.30
+        "19": 1.10
+        "20": 0.95
+        "21": 0.80
+        "22": 0.65
+        "23": 0.55
+      seasonal_bursts:
+        - start: "2026-01-06T00:00:00"
+          end: "2026-01-10T23:59:59"
+          multiplier: 2.4
+    fields:
+      ticket_id:
+        sequence:
+          start: 100000
+      agent_id:
+        fk: agents.agent_id
+      channel:
+        weighted_choice:
+          values: ["chat", "email", "phone", "web"]
+          weights: [0.40, 0.33, 0.20, 0.07]
+      priority:
+        weighted_choice:
+          values: ["low", "medium", "high", "urgent"]
+          weights: [0.30, 0.48, 0.18, 0.04]
+      resolution_minutes:
+        faker: random_int
+        min: 5
+        max: 240
+        scenarios:
+          outlier:
+            probability: 0.03
+            multiplier_min: 8
+            multiplier_max: 40
+      customer_email:
+        faker: email
+        scenarios:
+          placeholder_values:
+            values: ["unknown@example.com", "noemail@invalid.local"]
+            probability: 0.05
+      issue_summary:
+        faker: sentence
+        scenarios:
+          missing_probability: 0.03
+    scenarios:
+      null_bursts:
+        - columns: [issue_summary]
+          burst_count: 4
+          burst_length_min: 30
+          burst_length_max: 60
+      duplicate_key_bursts:
+        - column: ticket_id
+          burst_count: 3
+          burst_length_min: 3
+          burst_length_max: 6
+      late_arrivals:
+        - event_time_column: created_ts
+          arrival_time_column: ingest_ts
+          probability: 0.12
+          min_delay_minutes: 30
+          max_delay_minutes: 1440
+      incompleteness:
+        columns:
+          customer_email: 0.04

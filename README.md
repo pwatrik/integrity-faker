@@ -1,6 +1,6 @@
 # YAML-driven Synthetic Data Generator
 
-This small Python utility generates synthetic tabular datasets driven by a YAML configuration. It supports referential integrity between tables (foreign keys) and can output data as CSV files, JSON files, or a DuckDB database.
+Python utility that generates synthetic tabular datasets driven by a YAML configuration. It supports referential integrity between tables (foreign keys) and can output data as CSV files, JSON files, or a DuckDB database.
 
 Quick features
 
@@ -14,13 +14,13 @@ Quick features
 
 Usage
 
-Create a venv, install requirements, and run the smoke test:
+Create a venv, install requirements, and run the sanity check:
 
 ```cmd
 cd C:\Users\Patrick\code\portfolio\datafaker
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe run_smoke.py
+.venv\Scripts\python.exe scripts\sanity_checks\sanity_datafaker.py
 ```
 
 Example config is at `examples/config.yaml`.
@@ -30,6 +30,31 @@ CLI examples
 ```cmd
 .venv\Scripts\python.exe -m datafaker -c examples\config.yaml --dry-run
 .venv\Scripts\python.exe -m datafaker -c examples\config.yaml -f csv -o out --seed 42
+```
+
+Scenario generator examples
+
+`scenariofaker` extends basic fake data generation with configurable scenario behavior:
+
+- null bursts (contiguous runs of nulls)
+- duplicate-key bursts (contiguous runs of repeated IDs/keys)
+- outlier weighting for numeric values
+- incompleteness (missing values and placeholder IDs)
+- time-of-day/day-of-week/seasonal weighted traffic patterns
+- late-arrival timestamp simulation (event time vs ingest time)
+
+Use the included scenario config at `examples/scenario_config.yaml`.
+
+Additional domain presets:
+
+- `examples/scenario_sales.yaml`
+- `examples/scenario_support.yaml`
+- `examples/scenario_healthcare.yaml`
+
+```cmd
+.venv\Scripts\python.exe -m scenariofaker -c examples\scenario_config.yaml --dry-run
+.venv\Scripts\python.exe -m scenariofaker -c examples\scenario_config.yaml -f csv -o out\scenario --seed 42
+.venv\Scripts\python.exe scripts\sanity_checks\sanity_scenariofaker.py
 ```
 
 Field configuration tips
