@@ -146,6 +146,38 @@ class ScenarioDataGenerator:
         if hours and not isinstance(hours, dict):
             raise ValueError(f"{tname}.time_profile.hour_weights must be an object")
 
+        seasonal_bursts = profile.get("seasonal_bursts", [])
+        if seasonal_bursts:
+            if not isinstance(seasonal_bursts, list):
+                raise ValueError(f"{tname}.time_profile.seasonal_bursts must be a list")
+            for idx, burst in enumerate(seasonal_bursts):
+                if not isinstance(burst, dict):
+                    raise ValueError(
+                        f"{tname}.time_profile.seasonal_bursts[{idx}] must be an object"
+                    )
+                for key in ("start", "end"):
+                    if key not in burst:
+                        raise ValueError(
+                            f"{tname}.time_profile.seasonal_bursts[{idx}] missing required key '{key}'"
+                        )
+                burst_start = self._parse_datetime(burst["start"])
+                burst_end = self._parse_datetime(burst["end"])
+                if burst_end <= burst_start:
+                    raise ValueError(
+                        f"{tname}.time_profile.seasonal_bursts[{idx}].end must be after start"
+                    )
+
+                multiplier = burst.get("multiplier", 1.0)
+                try:
+                    multiplier_value = float(multiplier)
+                except (TypeError, ValueError):
+                    raise ValueError(
+                        f"{tname}.time_profile.seasonal_bursts[{idx}].multiplier must be a number"
+                    )
+                if multiplier_value <= 0:
+                    raise ValueError(
+                        f"{tname}.time_profile.seasonal_bursts[{idx}].multiplier must be greater than 0"
+                    )
     def _validate_table_scenarios(self, tname: str, scenarios: Dict[str, Any]) -> None:
         null_bursts = scenarios.get("null_bursts", [])
         if null_bursts and not isinstance(null_bursts, list):
